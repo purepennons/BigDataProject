@@ -42,7 +42,7 @@ public class Main {
 			throws IOException, InterruptedException {
             try{
                 // real price data path
-            	Path pt=new Path("hdfs://localhost:9000/user/hduser/testA/Daan_Real_Price.csv");
+            	Path pt=new Path("hdfs://localhost:9000/user/hduser/bigdata/real_price/Daan_Real_Price_with_index.csv");
                 
             	FileSystem fs = FileSystem.get(new Configuration());
     			
@@ -73,14 +73,14 @@ public class Main {
                 		String[] stringToken = line.split(",");
                         	
                 		//Use address to be the key. Maybe will change to index.
-                       	String address = stringToken[1];
+                		String index = stringToken[0];
+                       	String address = stringToken[2];
                        	String latString = stringToken[stringToken.length-2];
                        	String lngString = stringToken[stringToken.length-1];
                        	
                        	double lat = Double.parseDouble(latString);
                     	double lng = Double.parseDouble(lngString);
                     	
-                    	int typeCounter = 0;
                     	
                 		for(int i=0; i<locationList.size(); i++){
 
@@ -93,17 +93,16 @@ public class Main {
 //                			System.out.println("location: " + locationLat + ", " + locationLng);
                 			double distance = Candidate.getShortestDistanceBetweenTowCandidates(lat, lng, locationLat, locationLng);
                 			
-                			if(distance < 1000) {
-                        		context.write(new Text(address + "-" + key.toString()), new Text("1"));
-                        		typeCounter++;
+                			if(distance < 200) {
+//                        		context.write(new Text(index + ", " + lat + ", " + lng + "-" + key.toString()), new Text("1"));
+                				context.write(new Text(index), new Text("1"));
+                			} else {
+//                        		context.write(new Text(index + ", " + lat + ", " + lng + "-" + key.toString()), new Text("0"));
+                				context.write(new Text(index), new Text("0"));
                 			}
                 			
                 		}
                 		
-//                		System.out.println("address: " + address + " " + key + ": " + typeCounter);
-                		
-//                		context.write(new Text(address + "-" + key.toString()), new Text(Integer.toString(typeCounter)));
-
                         line = br.readLine();
                         
                 	}
@@ -122,20 +121,20 @@ public class Main {
 
     public void reduce(Text key, Iterable<Text> values, Context context) 
       throws IOException, InterruptedException {
-
-    	System.out.println("********************************************************************");
+//    	System.out.println(key);
+//    	System.out.println("********************************************************************");
 		
 		int counter = 0;
     	for(Text val:values){
-			counter++;
+			counter += Integer.parseInt(val.toString());
 		}
     	
-		System.out.println(key + ": " + counter);
+//		System.out.println(key + ": " + counter);
 		
 		context.write(key, new Text(Integer.toString(counter)));
 
     	
-		System.out.println("********************************************************************");
+//		System.out.println("********************************************************************");
 
 
     }
@@ -159,8 +158,12 @@ public class Main {
     job.setInputFormatClass(TextInputFormat.class);
     job.setOutputFormatClass(TextOutputFormat.class);
         
-    FileInputFormat.addInputPath(job, new Path("test"));
+//    FileInputFormat.addInputPath(job, new Path("test"));
+    
+    FileInputFormat.addInputPath(job, new Path("bigdata/locations"));
+
     FileOutputFormat.setOutputPath(job, new Path("output"));
+    
     
 	
 	job.setMapOutputKeyClass(Text.class);
